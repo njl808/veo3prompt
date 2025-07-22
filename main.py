@@ -21,6 +21,11 @@ with open("one.csv", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     jokes = [row["joke"] for row in reader if row.get("joke")]
 
+# Load life advice from CSV
+with open("life.csv", newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    advice_lines = [row["advice"] for row in reader if row.get("advice")]
+
 st.title("Cardiff Airport Comedy Prompt Builder")
 
 save_file = st.text_input(
@@ -28,13 +33,28 @@ save_file = st.text_input(
     value="prompts.txt",
 )
 
-scene = st.selectbox("Select Scene", scene_names)
-character = st.selectbox("Select Character", character_names)
+use_bespoke = st.checkbox("Use bespoke scene")
+if use_bespoke:
+    bespoke_scene = st.text_area(
+        "Bespoke Scene Description", height=80, placeholder="Enter scene"
+    )
+    scene_desc = bespoke_scene
+else:
+    scene = st.selectbox("Select Scene", scene_names)
+    scene_desc = scene_dict[scene]
 
-st.write("**Scene Description:**", scene_dict[scene])
+character = st.selectbox("Select Character", character_names)
+character2 = st.selectbox(
+    "Select Second Character (optional)", ["None"] + character_names
+)
+
+st.write("**Scene Description:**", scene_desc)
 st.write("**Character Description:**", character_dict[character])
+if character2 != "None":
+    st.write("**Second Character Description:**", character_dict[character2])
 
 include_joke = st.checkbox("Include random joke")
+include_advice = st.checkbox("Include random life advice")
 extra_description = st.text_input(
     "Additional character description (optional)"
 )
@@ -43,24 +63,29 @@ dialogue = st.text_area("Enter Character’s Line")
 
 if st.button("Preview Prompt"):
     result = (
-        f"Scene: {scene_dict[scene]}\n"
-        f"{character}—{character_dict[character]}"
+        f"Scene: {scene_desc}\n" f"{character}—{character_dict[character]}"
     )
     if extra_description.strip():
         result += f" {extra_description.strip()}"
+    if character2 != "None":
+        result += f"\n{character2}—{character_dict[character2]}"
     result += f"\n{character}: {dialogue}"
     if include_joke and jokes:
         st.session_state.preview_joke = random.choice(jokes)
         result += f"\nJoke: {st.session_state.preview_joke}"
+    if include_advice and advice_lines:
+        st.session_state.preview_advice = random.choice(advice_lines)
+        result += f"\nAdvice: {st.session_state.preview_advice}"
     st.text_area("Prompt Preview", value=result, height=200)
 
 if st.button("Save Prompt"):
     result = (
-        f"Scene: {scene_dict[scene]}\n"
-        f"{character}—{character_dict[character]}"
+        f"Scene: {scene_desc}\n" f"{character}—{character_dict[character]}"
     )
     if extra_description.strip():
         result += f" {extra_description.strip()}"
+    if character2 != "None":
+        result += f"\n{character2}—{character_dict[character2]}"
     result += f"\n{character}: {dialogue}"
     joke_to_use = None
     if include_joke and jokes:
@@ -76,6 +101,11 @@ if st.button("Save Prompt"):
                 for j in jokes:
                     writer.writerow({"joke": j})
         st.session_state.preview_joke = ""
+    if include_advice and advice_lines:
+        advice_to_use = st.session_state.get(
+            "preview_advice"
+        ) or random.choice(advice_lines)
+        result += f"\nAdvice: {advice_to_use}"
     result += "\n---\n"
     with open(save_file, "a", encoding="utf-8") as f:
         f.write(result)
